@@ -16,8 +16,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
-# Documentation & Agents
-*.md
+# Agents & internal docs
+CLAUDE.md
+AKITA_METHOD.md
 .claude/
 .gemini/
 
