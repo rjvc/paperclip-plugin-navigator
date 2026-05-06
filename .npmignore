@@ -1,0 +1,17 @@
+# Source and Tests
+src/
+tests/
+scripts/
+vitest.config.ts
+tsconfig.json
+pnpm-lock.yaml
+
+# Documentation & Agents
+*.md
+.claude/
+.gemini/
+.git/
+
+# Logs
+*.log
+.pnpm-debug.log*

@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.pnpm-debug.log*
+
+# Build output
+dist/
+**/dist/
+
+# Tests
+coverage/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Documentation & Agents
+*.md
+.claude/
+.gemini/
+
+# Agent settings & local memory
+.claude/settings.local.json
