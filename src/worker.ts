@@ -134,6 +134,56 @@ const plugin = definePlugin({
 
       return entries;
     });
+
+    /**
+     * "project-files" data handler — called by NavigatorProjectSidebarItem.
+     *
+     * Accepts { projectId, companyId } and returns a single ProjectEntry
+     * for the primary workspace of that project, or null if not found.
+     */
+    ctx.data.register("project-files", async (params?: Record<string, unknown>) => {
+      const projectId = typeof params?.projectId === "string" ? params.projectId : null;
+      const paramCompanyId = typeof params?.companyId === "string" ? params.companyId : null;
+
+      if (!projectId) return null;
+
+      const config = await ctx.config.get();
+      const fileBrowserBaseUrl =
+        typeof config?.fileBrowserBaseUrl === "string" &&
+        config.fileBrowserBaseUrl.trim() !== ""
+          ? config.fileBrowserBaseUrl.trim()
+          : null;
+
+      let companyId = paramCompanyId;
+      if (!companyId) {
+        const companies = await ctx.companies.list({ limit: 1 });
+        if (companies.length === 0) return null;
+        companyId = companies[0].id;
+      }
+
+      const [project, workspace] = await Promise.all([
+        ctx.projects.get(projectId, companyId),
+        ctx.projects.getPrimaryWorkspace(projectId, companyId),
+      ]);
+
+      if (!workspace) {
+        return {
+          id: projectId,
+          name: project?.name ?? projectId,
+          path: null,
+          fileBrowserUrl: null,
+        } satisfies ProjectEntry;
+      }
+
+      return {
+        id: projectId,
+        name: project?.name ?? projectId,
+        path: workspace.path,
+        fileBrowserUrl: fileBrowserBaseUrl
+          ? buildFileBrowserUrl(fileBrowserBaseUrl, workspace.path)
+          : null,
+      } satisfies ProjectEntry;
+    });
   },
 
   async onHealth() {

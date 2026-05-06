@@ -79,6 +79,7 @@ interface MockCtx {
   companies: { list: ReturnType<typeof vi.fn> };
   projects: {
     list: ReturnType<typeof vi.fn>;
+    get: ReturnType<typeof vi.fn>;
     getPrimaryWorkspace: ReturnType<typeof vi.fn>;
   };
   data: {
@@ -101,6 +102,7 @@ function makeMockCtx(): MockCtx {
     companies: { list: vi.fn() },
     projects: {
       list: vi.fn(),
+      get: vi.fn(),
       getPrimaryWorkspace: vi.fn(),
     },
     data: {
@@ -295,5 +297,78 @@ describe("worker projects data handler", () => {
     // Second project fails gracefully
     expect(result[1].fileBrowserUrl).toBeNull();
     expect(result[1].path).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// "project-files" single-project handler tests
+// ---------------------------------------------------------------------------
+
+describe("worker project-files data handler", () => {
+  let ctx: MockCtx;
+
+  beforeEach(async () => {
+    ctx = makeMockCtx();
+    vi.resetModules();
+    const workerModule = await import("../src/worker.js");
+    const plugin = workerModule.default as {
+      setup: (ctx: unknown) => Promise<void>;
+    };
+    await plugin.setup(ctx);
+  });
+
+  it("registers a 'project-files' data handler", () => {
+    expect(ctx.data._handlers.has("project-files")).toBe(true);
+  });
+
+  it("returns null when projectId param is missing", async () => {
+    const handler = ctx.data._handlers.get("project-files")!;
+    const result = await handler({});
+    expect(result).toBeNull();
+  });
+
+  it("returns entry with fileBrowserUrl when workspace exists", async () => {
+    ctx.config.get.mockResolvedValue({ fileBrowserBaseUrl: "https://files.example.com/files" });
+    ctx.companies.list.mockResolvedValue([{ id: "company-1", name: "ACME" }]);
+    ctx.projects.get.mockResolvedValue({ id: "proj-1", name: "Alpha" });
+    ctx.projects.getPrimaryWorkspace.mockResolvedValue({
+      id: "ws-1",
+      projectId: "proj-1",
+      name: "alpha-ws",
+      path: "/paperclip/instances/default/projects/proj-1/ws-1/alpha",
+      isPrimary: true,
+    });
+
+    const handler = ctx.data._handlers.get("project-files")!;
+    const result = (await handler({ projectId: "proj-1", companyId: "company-1" })) as ProjectEntry;
+
+    expect(result.id).toBe("proj-1");
+    expect(result.name).toBe("Alpha");
+    expect(result.fileBrowserUrl).toBe(
+      "https://files.example.com/files/instances/default/projects/proj-1/ws-1/alpha",
+    );
+  });
+
+  it("returns fileBrowserUrl: null when workspace is missing", async () => {
+    ctx.config.get.mockResolvedValue({ fileBrowserBaseUrl: "https://files.example.com/files" });
+    ctx.companies.list.mockResolvedValue([{ id: "company-1", name: "ACME" }]);
+    ctx.projects.get.mockResolvedValue({ id: "proj-1", name: "Alpha" });
+    ctx.projects.getPrimaryWorkspace.mockResolvedValue(null);
+
+    const handler = ctx.data._handlers.get("project-files")!;
+    const result = (await handler({ projectId: "proj-1", companyId: "company-1" })) as ProjectEntry;
+
+    expect(result.fileBrowserUrl).toBeNull();
+    expect(result.path).toBeNull();
+  });
+
+  it("returns null when no companies found and companyId not supplied", async () => {
+    ctx.config.get.mockResolvedValue({ fileBrowserBaseUrl: "https://files.example.com/files" });
+    ctx.companies.list.mockResolvedValue([]);
+
+    const handler = ctx.data._handlers.get("project-files")!;
+    const result = await handler({ projectId: "proj-1" });
+
+    expect(result).toBeNull();
   });
 });

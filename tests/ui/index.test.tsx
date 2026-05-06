@@ -18,7 +18,7 @@ vi.mock("@paperclipai/plugin-sdk/ui", () => ({
 // Components under test
 // ---------------------------------------------------------------------------
 
-import { NavigatorPage, NavigatorSidebarEntry } from "../../src/ui/index.js";
+import { NavigatorPage, NavigatorSidebarEntry, NavigatorProjectSidebarItem } from "../../src/ui/index.js";
 
 // ---------------------------------------------------------------------------
 // Context helpers
@@ -40,22 +40,74 @@ function makeContext(overrides?: Partial<{ companyId: string | null; companyPref
 // ---------------------------------------------------------------------------
 
 describe("NavigatorSidebarEntry", () => {
-  it("renders a link with label 'Files'", () => {
+  beforeEach(() => {
+    vi_mockUsePluginData.mockReset();
+  });
+
+  it("renders a 'Files' toggle button", () => {
+    vi_mockUsePluginData.mockReturnValue({ data: [], loading: false, error: null });
     render(<NavigatorSidebarEntry context={makeContext()} />);
-    const link = screen.getByRole("link", { name: /files/i });
-    expect(link).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /files/i })).toBeInTheDocument();
   });
 
-  it("links to the global plugin route when companyPrefix is null", () => {
-    render(<NavigatorSidebarEntry context={makeContext({ companyPrefix: null })} />);
-    const link = screen.getByRole("link", { name: /files/i });
-    expect(link).toHaveAttribute("href", "/plugins/paperclip-plugin-navigator");
+  it("does not show projects before expanding", () => {
+    vi_mockUsePluginData.mockReturnValue({
+      data: [{ id: "1", name: "Alpha", path: "/p", fileBrowserUrl: "https://x.com" }],
+      loading: false,
+      error: null,
+    });
+    render(<NavigatorSidebarEntry context={makeContext()} />);
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
-  it("links to the company-scoped route when companyPrefix is set", () => {
-    render(<NavigatorSidebarEntry context={makeContext({ companyPrefix: "grupo-castro" })} />);
-    const link = screen.getByRole("link", { name: /files/i });
-    expect(link).toHaveAttribute("href", "/grupo-castro/plugins/paperclip-plugin-navigator");
+  it("shows projects after clicking the toggle", () => {
+    vi_mockUsePluginData.mockReturnValue({
+      data: [{ id: "1", name: "Alpha", path: "/p", fileBrowserUrl: "https://x.com" }],
+      loading: false,
+      error: null,
+    });
+    render(<NavigatorSidebarEntry context={makeContext()} />);
+    fireEvent.click(screen.getByRole("button", { name: /files/i }));
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("shows 'Abrir →' links for projects with fileBrowserUrl", () => {
+    vi_mockUsePluginData.mockReturnValue({
+      data: [{ id: "1", name: "Alpha", path: "/p", fileBrowserUrl: "https://files.example.com/p" }],
+      loading: false,
+      error: null,
+    });
+    render(<NavigatorSidebarEntry context={makeContext()} />);
+    fireEvent.click(screen.getByRole("button", { name: /files/i }));
+    const link = screen.getByRole("link", { name: /abrir alpha/i });
+    expect(link).toHaveAttribute("href", "https://files.example.com/p");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("shows '—' for projects without fileBrowserUrl", () => {
+    vi_mockUsePluginData.mockReturnValue({
+      data: [{ id: "1", name: "Orphan", path: null, fileBrowserUrl: null }],
+      loading: false,
+      error: null,
+    });
+    render(<NavigatorSidebarEntry context={makeContext()} />);
+    fireEvent.click(screen.getByRole("button", { name: /files/i }));
+    expect(screen.getByText("Orphan")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("collapses back when toggled again", () => {
+    vi_mockUsePluginData.mockReturnValue({
+      data: [{ id: "1", name: "Alpha", path: "/p", fileBrowserUrl: "https://x.com" }],
+      loading: false,
+      error: null,
+    });
+    render(<NavigatorSidebarEntry context={makeContext()} />);
+    const btn = screen.getByRole("button", { name: /files/i });
+    fireEvent.click(btn);
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 });
 
@@ -196,6 +248,65 @@ describe("NavigatorPage", () => {
     fireEvent.click(refreshButton);
 
     expect(refreshSpy).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NavigatorProjectSidebarItem
+// ---------------------------------------------------------------------------
+
+function makeProjectContext(overrides?: Partial<{ companyId: string | null; entityId: string }>) {
+  return {
+    companyId: overrides?.companyId ?? "company-1",
+    companyPrefix: null,
+    projectId: null,
+    entityId: overrides?.entityId ?? "proj-1",
+    entityType: "project" as const,
+    userId: null,
+  };
+}
+
+describe("NavigatorProjectSidebarItem", () => {
+  beforeEach(() => {
+    vi_mockUsePluginData.mockReset();
+  });
+
+  it("renders nothing while loading", () => {
+    vi_mockUsePluginData.mockReturnValue({ data: null, loading: true, error: null });
+    const { container } = render(<NavigatorProjectSidebarItem context={makeProjectContext()} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders nothing when fileBrowserUrl is null", () => {
+    vi_mockUsePluginData.mockReturnValue({
+      data: { id: "proj-1", name: "Alpha", path: null, fileBrowserUrl: null },
+      loading: false,
+      error: null,
+    });
+    const { container } = render(<NavigatorProjectSidebarItem context={makeProjectContext()} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders a Files link when fileBrowserUrl is set", () => {
+    vi_mockUsePluginData.mockReturnValue({
+      data: { id: "proj-1", name: "Alpha", path: "/p", fileBrowserUrl: "https://files.example.com/p" },
+      loading: false,
+      error: null,
+    });
+    render(<NavigatorProjectSidebarItem context={makeProjectContext()} />);
+    const link = screen.getByRole("link", { name: /abrir ficheiros de alpha/i });
+    expect(link).toHaveAttribute("href", "https://files.example.com/p");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("calls usePluginData with the project entityId", () => {
+    vi_mockUsePluginData.mockReturnValue({ data: null, loading: true, error: null });
+    render(<NavigatorProjectSidebarItem context={makeProjectContext({ entityId: "proj-42" })} />);
+    expect(vi_mockUsePluginData).toHaveBeenCalledWith(
+      "project-files",
+      expect.objectContaining({ projectId: "proj-42" }),
+    );
   });
 });
 

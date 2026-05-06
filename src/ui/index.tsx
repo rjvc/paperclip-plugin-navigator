@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import type { PluginPageProps, PluginSidebarProps } from "@paperclipai/plugin-sdk/ui";
+import type { PluginPageProps, PluginSidebarProps, PluginProjectSidebarItemProps } from "@paperclipai/plugin-sdk/ui";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 
 interface ProjectEntry {
@@ -170,36 +170,111 @@ const styles = {
 };
 
 export function NavigatorSidebarEntry({ context }: PluginSidebarProps) {
-  const href = context.companyPrefix
-    ? `/${context.companyPrefix}/plugins/paperclip-plugin-navigator`
-    : `/plugins/paperclip-plugin-navigator`;
+  const [open, setOpen] = useState(false);
+  const { data, loading, error } = usePluginData<ProjectEntry[]>("projects", {
+    companyId: context.companyId ?? undefined,
+  });
+
+  const projects = data ?? [];
+
+  return (
+    <div style={{ width: "100%" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          width: "100%",
+          padding: "6px 8px",
+          borderRadius: "6px",
+          fontSize: "14px",
+          fontWeight: 500,
+          color: "inherit",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+        <span style={{ flex: 1 }}>Files</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{ paddingLeft: "8px", marginTop: "4px" }}>
+          {loading && (
+            <p style={{ fontSize: "12px", color: "#9ca3af", padding: "4px 8px", margin: 0 }}>
+              A carregar...
+            </p>
+          )}
+          {!loading && error && (
+            <p style={{ fontSize: "12px", color: "#ef4444", padding: "4px 8px", margin: 0 }}>
+              Erro ao carregar.
+            </p>
+          )}
+          {!loading && !error && projects.length === 0 && (
+            <p style={{ fontSize: "12px", color: "#9ca3af", padding: "4px 8px", margin: 0 }}>
+              Sem projectos.
+            </p>
+          )}
+          {!loading && !error && projects.map((project) => (
+            <div key={project.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 8px", borderRadius: "4px", gap: "8px" }}>
+              <span style={{ fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={project.name}>
+                {project.name}
+              </span>
+              {project.fileBrowserUrl ? (
+                <a
+                  href={project.fileBrowserUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: "11px", color: "#2563eb", textDecoration: "none", flexShrink: 0 }}
+                  aria-label={`Abrir ${project.name}`}
+                >
+                  Abrir →
+                </a>
+              ) : (
+                <span style={{ fontSize: "11px", color: "#9ca3af", flexShrink: 0 }}>—</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function NavigatorProjectSidebarItem({ context }: PluginProjectSidebarItemProps) {
+  const { data, loading } = usePluginData<ProjectEntry>("project-files", {
+    projectId: context.entityId,
+    companyId: context.companyId ?? undefined,
+  });
+
+  if (loading || !data?.fileBrowserUrl) return null;
 
   return (
     <a
-      href={href}
+      href={data.fileBrowserUrl}
+      target="_blank"
+      rel="noopener noreferrer"
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "8px",
-        padding: "6px 8px",
-        borderRadius: "6px",
-        fontSize: "14px",
-        fontWeight: 500,
-        color: "inherit",
+        gap: "6px",
+        fontSize: "12px",
+        color: "#2563eb",
         textDecoration: "none",
+        padding: "2px 4px",
+        borderRadius: "4px",
       }}
+      aria-label={`Abrir ficheiros de ${data.name}`}
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
       </svg>
       Files

@@ -2,12 +2,14 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 
 const PLUGIN_ID = "paperclip-plugin-navigator";
 
-const PLUGIN_VERSION = "0.1.2";
+const PLUGIN_VERSION = "0.1.6";
 
 const NAV_PAGE_SLOT_ID = "navigator-page";
 const NAV_SIDEBAR_SLOT_ID = "navigator-sidebar";
+const NAV_PROJECT_SLOT_ID = "navigator-project-sidebar";
 const NAV_EXPORT_NAME = "NavigatorPage";
 const NAV_SIDEBAR_EXPORT_NAME = "NavigatorSidebarEntry";
+const NAV_PROJECT_EXPORT_NAME = "NavigatorProjectSidebarItem";
 
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
@@ -54,6 +56,12 @@ const manifest: PaperclipPluginManifestV1 = {
         id: NAV_PAGE_SLOT_ID,
         displayName: "Files",
         exportName: NAV_EXPORT_NAME,
+      },
+      {
+        type: "projectSidebarItem",
+        id: NAV_PROJECT_SLOT_ID,
+        displayName: "Files",
+        exportName: NAV_PROJECT_EXPORT_NAME,
       },
     ],
   },
