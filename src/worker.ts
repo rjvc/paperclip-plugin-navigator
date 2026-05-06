@@ -2,6 +2,27 @@ import { definePlugin, runWorker } from "@paperclipai/plugin-sdk";
 
 const PLUGIN_NAME = "paperclip-plugin-navigator";
 
+// Accepts only https:// or http:// URLs — blocks SSRF via internal schemes
+// (file://, ftp://, javascript:, data:, etc.) and bare IPs on private ranges
+// are not blocked here because internal filebrowsers on LANs are valid.
+// The protocol check is the critical guard.
+export function isSafeUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+// UUIDs and short alphanumeric IDs used by Paperclip — rejects anything that
+// could be used to probe or inject into SDK calls.
+const SAFE_ID_RE = /^[a-zA-Z0-9_\-]{1,128}$/;
+
+export function isSafeId(value: string): boolean {
+  return SAFE_ID_RE.test(value);
+}
+
 /**
  * Strips the `/paperclip` prefix from an absolute workspace path and appends
  * it to the operator-supplied filebrowser base URL.
@@ -45,21 +66,23 @@ const plugin = definePlugin({
      *  - Graceful Fallbacks: Handles missing config, missing workspaces, and fetch errors per project.
      */
     ctx.data.register("projects", async (params?: Record<string, unknown>) => {
-      const limit = typeof params?.limit === "number" ? params.limit : 50;
-      const offset = typeof params?.offset === "number" ? params.offset : 0;
-      const paramCompanyId = typeof params?.companyId === "string" ? params.companyId : null;
+      const rawLimit = typeof params?.limit === "number" ? params.limit : 50;
+      const rawOffset = typeof params?.offset === "number" ? params.offset : 0;
+      const limit = Math.max(1, Math.min(rawLimit, 200));
+      const offset = Math.max(0, rawOffset);
+      const rawCompanyId = typeof params?.companyId === "string" ? params.companyId : null;
+      const paramCompanyId = rawCompanyId && isSafeId(rawCompanyId) ? rawCompanyId : null;
 
       // 1. Resolve the operator config — we need fileBrowserBaseUrl.
       const config = await ctx.config.get();
-      const fileBrowserBaseUrl =
-        typeof config?.fileBrowserBaseUrl === "string" &&
-        config.fileBrowserBaseUrl.trim() !== ""
-          ? config.fileBrowserBaseUrl.trim()
-          : null;
+      const rawBaseUrl = typeof config?.fileBrowserBaseUrl === "string"
+        ? config.fileBrowserBaseUrl.trim()
+        : "";
+      const fileBrowserBaseUrl = rawBaseUrl && isSafeUrl(rawBaseUrl) ? rawBaseUrl : null;
 
       if (!fileBrowserBaseUrl) {
         ctx.logger.warn(
-          `${PLUGIN_NAME}: fileBrowserBaseUrl is not configured — fileBrowserUrl will be null`,
+          `${PLUGIN_NAME}: fileBrowserBaseUrl is not configured or is not a valid http(s) URL`,
         );
       }
 
@@ -75,10 +98,10 @@ const plugin = definePlugin({
       }
 
       // 3. List projects with pagination.
-      const projects = await ctx.projects.list({ 
-        companyId, 
-        limit, 
-        offset 
+      const projects = await ctx.projects.list({
+        companyId,
+        limit,
+        offset,
       });
 
       // 4. Process projects in batches to fetch primary workspaces.
@@ -142,17 +165,19 @@ const plugin = definePlugin({
      * for the primary workspace of that project, or null if not found.
      */
     ctx.data.register("project-files", async (params?: Record<string, unknown>) => {
-      const projectId = typeof params?.projectId === "string" ? params.projectId : null;
-      const paramCompanyId = typeof params?.companyId === "string" ? params.companyId : null;
+      const rawProjectId = typeof params?.projectId === "string" ? params.projectId : null;
+      const rawCompanyId = typeof params?.companyId === "string" ? params.companyId : null;
+
+      const projectId = rawProjectId && isSafeId(rawProjectId) ? rawProjectId : null;
+      const paramCompanyId = rawCompanyId && isSafeId(rawCompanyId) ? rawCompanyId : null;
 
       if (!projectId) return null;
 
       const config = await ctx.config.get();
-      const fileBrowserBaseUrl =
-        typeof config?.fileBrowserBaseUrl === "string" &&
-        config.fileBrowserBaseUrl.trim() !== ""
-          ? config.fileBrowserBaseUrl.trim()
-          : null;
+      const rawBaseUrl = typeof config?.fileBrowserBaseUrl === "string"
+        ? config.fileBrowserBaseUrl.trim()
+        : "";
+      const fileBrowserBaseUrl = rawBaseUrl && isSafeUrl(rawBaseUrl) ? rawBaseUrl : null;
 
       let companyId = paramCompanyId;
       if (!companyId) {

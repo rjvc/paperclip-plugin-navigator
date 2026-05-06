@@ -2,7 +2,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 
 const PLUGIN_ID = "paperclip-plugin-navigator";
 
-const PLUGIN_VERSION = "0.1.6";
+const PLUGIN_VERSION = "0.1.9";
 
 const NAV_PAGE_SLOT_ID = "navigator-page";
 const NAV_SIDEBAR_SLOT_ID = "navigator-sidebar";
@@ -62,6 +62,7 @@ const manifest: PaperclipPluginManifestV1 = {
         id: NAV_PROJECT_SLOT_ID,
         displayName: "Files",
         exportName: NAV_PROJECT_EXPORT_NAME,
+        entityTypes: ["project"],
       },
     ],
   },

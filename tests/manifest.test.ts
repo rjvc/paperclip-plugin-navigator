@@ -44,10 +44,10 @@ describe("manifest", () => {
     expect(manifest.entrypoints?.ui).toBeTruthy();
   });
 
-  it("has a ui.slots array with at least two slots", () => {
+  it("has a ui.slots array with at least three slots", () => {
     expect(manifest.ui).toBeDefined();
     expect(Array.isArray(manifest.ui?.slots)).toBe(true);
-    expect((manifest.ui?.slots ?? []).length).toBeGreaterThanOrEqual(2);
+    expect((manifest.ui?.slots ?? []).length).toBeGreaterThanOrEqual(3);
   });
 
   it("has a sidebar slot for navigation", () => {
@@ -66,5 +66,13 @@ describe("manifest", () => {
     expect(pageSlot?.type).toBe("page");
     expect(pageSlot?.displayName).toBe("Files");
     expect(pageSlot?.exportName).toBe("NavigatorPage");
+  });
+
+  it("has a projectSidebarItem slot with entityTypes: ['project']", () => {
+    const slots = manifest.ui?.slots ?? [];
+    const projectSlot = slots.find((s) => s.id === "navigator-project-sidebar");
+    expect(projectSlot).toBeDefined();
+    expect(projectSlot?.type).toBe("projectSidebarItem");
+    expect(projectSlot?.entityTypes).toContain("project");
   });
 });

@@ -2,6 +2,18 @@ import { useState, useMemo } from "react";
 import type { PluginPageProps, PluginSidebarProps, PluginProjectSidebarItemProps } from "@paperclipai/plugin-sdk/ui";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 
+// Prevents javascript:, data:, vbscript: etc. from being used as href values.
+// Only allows http:// and https:// URLs.
+function safeHref(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const { protocol } = new URL(url);
+    return protocol === "https:" || protocol === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 interface ProjectEntry {
   id: string;
   name: string;
@@ -228,9 +240,9 @@ export function NavigatorSidebarEntry({ context }: PluginSidebarProps) {
               <span style={{ fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={project.name}>
                 {project.name}
               </span>
-              {project.fileBrowserUrl ? (
+              {safeHref(project.fileBrowserUrl) ? (
                 <a
-                  href={project.fileBrowserUrl}
+                  href={safeHref(project.fileBrowserUrl) ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ fontSize: "11px", color: "#2563eb", textDecoration: "none", flexShrink: 0 }}
@@ -255,11 +267,11 @@ export function NavigatorProjectSidebarItem({ context }: PluginProjectSidebarIte
     companyId: context.companyId ?? undefined,
   });
 
-  if (loading || !data?.fileBrowserUrl) return null;
+  if (loading || !safeHref(data?.fileBrowserUrl ?? null)) return null;
 
   return (
     <a
-      href={data.fileBrowserUrl}
+      href={safeHref(data.fileBrowserUrl) ?? "#"}
       target="_blank"
       rel="noopener noreferrer"
       style={{
@@ -386,9 +398,9 @@ export function NavigatorPage({ context }: PluginPageProps) {
               )}
             </div>
             <div style={styles.actionCell}>
-              {project.fileBrowserUrl ? (
+              {safeHref(project.fileBrowserUrl) ? (
                 <a
-                  href={project.fileBrowserUrl}
+                  href={safeHref(project.fileBrowserUrl) ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{...styles.button, ...styles.primaryButton}}

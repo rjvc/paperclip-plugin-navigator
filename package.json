@@ -1,11 +1,22 @@
 {
   "name": "paperclip-plugin-navigator",
-  "version": "0.1.8",
+  "version": "0.1.10",
   "description": "Project-aware file navigator for Paperclip. Browse projects with real names and open them in your external filebrowser.",
   "type": "module",
   "private": false,
   "license": "MIT",
-  "author": "Ricardo Castro",
+  "author": "Ricardo Castro <rjvcastro@gmail.com>",
+  "homepage": "https://github.com/rjvc/paperclip-plugin-navigator#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rjvc/paperclip-plugin-navigator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rjvc/paperclip-plugin-navigator/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "keywords": [
     "paperclip",
     "plugin",
@@ -48,6 +59,10 @@
   },
   "peerDependencies": {
     "react": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "pnpm": {
     "onlyBuiltDependencies": [

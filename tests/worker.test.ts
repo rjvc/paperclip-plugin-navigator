@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildFileBrowserUrl, type ProjectEntry } from "../src/worker.js";
+import { buildFileBrowserUrl, isSafeUrl, isSafeId, type ProjectEntry } from "../src/worker.js";
 
 // ---------------------------------------------------------------------------
 // buildFileBrowserUrl unit tests
@@ -56,6 +56,70 @@ describe("buildFileBrowserUrl", () => {
     expect(result).toBe(
       "https://files.example.com/files/paperclip-projects/uuid",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isSafeUrl
+// ---------------------------------------------------------------------------
+
+describe("isSafeUrl", () => {
+  it("accepts https URLs", () => {
+    expect(isSafeUrl("https://files.example.com/files")).toBe(true);
+  });
+
+  it("accepts http URLs", () => {
+    expect(isSafeUrl("http://files.local/files")).toBe(true);
+  });
+
+  it("rejects javascript: protocol", () => {
+    expect(isSafeUrl("javascript:alert(1)")).toBe(false);
+  });
+
+  it("rejects data: protocol", () => {
+    expect(isSafeUrl("data:text/html,<script>alert(1)</script>")).toBe(false);
+  });
+
+  it("rejects file: protocol", () => {
+    expect(isSafeUrl("file:///etc/passwd")).toBe(false);
+  });
+
+  it("rejects empty string", () => {
+    expect(isSafeUrl("")).toBe(false);
+  });
+
+  it("rejects non-URL strings", () => {
+    expect(isSafeUrl("not-a-url")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isSafeId
+// ---------------------------------------------------------------------------
+
+describe("isSafeId", () => {
+  it("accepts UUIDs", () => {
+    expect(isSafeId("550e8400-e29b-41d4-a716-446655440000")).toBe(true);
+  });
+
+  it("accepts short alphanumeric IDs", () => {
+    expect(isSafeId("proj-1")).toBe(true);
+  });
+
+  it("rejects empty string", () => {
+    expect(isSafeId("")).toBe(false);
+  });
+
+  it("rejects strings with path traversal", () => {
+    expect(isSafeId("../etc/passwd")).toBe(false);
+  });
+
+  it("rejects strings with semicolons", () => {
+    expect(isSafeId("id;rm -rf /")).toBe(false);
+  });
+
+  it("rejects strings longer than 128 chars", () => {
+    expect(isSafeId("a".repeat(129))).toBe(false);
   });
 });
 
