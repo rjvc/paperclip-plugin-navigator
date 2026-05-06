@@ -267,11 +267,12 @@ export function NavigatorProjectSidebarItem({ context }: PluginProjectSidebarIte
     companyId: context.companyId ?? undefined,
   });
 
-  if (loading || !safeHref(data?.fileBrowserUrl ?? null)) return null;
+  const href = safeHref(data?.fileBrowserUrl ?? null);
+  if (loading || !href) return null;
 
   return (
     <a
-      href={safeHref(data.fileBrowserUrl) ?? "#"}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       style={{
@@ -284,7 +285,7 @@ export function NavigatorProjectSidebarItem({ context }: PluginProjectSidebarIte
         padding: "2px 4px",
         borderRadius: "4px",
       }}
-      aria-label={`Abrir ficheiros de ${data.name}`}
+      aria-label={`Abrir ficheiros de ${data?.name ?? ""}`}
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
