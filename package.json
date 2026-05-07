@@ -1,6 +1,6 @@
 {
   "name": "paperclip-plugin-navigator",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Project-aware file navigator for Paperclip. Browse projects with real names and open them in your external filebrowser.",
   "type": "module",
   "private": false,

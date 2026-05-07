@@ -2,7 +2,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 
 const PLUGIN_ID = "paperclip-plugin-navigator";
 
-const PLUGIN_VERSION = "0.1.14";
+const PLUGIN_VERSION = "0.1.15";
 
 const NAV_PAGE_SLOT_ID = "navigator-page";
 const NAV_SIDEBAR_SLOT_ID = "navigator-sidebar";
@@ -35,6 +35,13 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "File Browser Base URL",
         description:
           "Base URL of your external filebrowser (e.g. https://files.example.com/files)",
+      },
+      enableModalBrowser: {
+        type: "boolean",
+        title: "Enable Modal Browser (Beta)",
+        description:
+          "When enabled, clicking Files opens an inline file browser modal instead of navigating to the external filebrowser. Beta feature — disabled by default.",
+        default: false,
       },
     },
     required: ["fileBrowserBaseUrl"],
