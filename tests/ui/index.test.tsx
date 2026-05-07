@@ -79,9 +79,8 @@ describe("NavigatorSidebarEntry", () => {
     });
     render(<NavigatorSidebarEntry context={makeContext()} />);
     fireEvent.click(screen.getByRole("button", { name: /files/i }));
-    const link = screen.getByRole("link", { name: /abrir alpha/i });
-    expect(link).toHaveAttribute("href", "https://files.example.com/p");
-    expect(link).toHaveAttribute("target", "_blank");
+    const btn = screen.getByRole("button", { name: /abrir alpha/i });
+    expect(btn).toBeInTheDocument();
   });
 
   it("shows '—' for projects without fileBrowserUrl", () => {

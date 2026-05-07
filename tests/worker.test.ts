@@ -436,3 +436,53 @@ describe("worker project-files data handler", () => {
     expect(result).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// "plugin-config" handler tests
+// ---------------------------------------------------------------------------
+
+describe("worker plugin-config data handler", () => {
+  let ctx: MockCtx;
+
+  beforeEach(async () => {
+    ctx = makeMockCtx();
+    vi.resetModules();
+    const workerModule = await import("../src/worker.js");
+    const plugin = workerModule.default as {
+      setup: (ctx: unknown) => Promise<void>;
+    };
+    await plugin.setup(ctx);
+  });
+
+  it("registers a 'plugin-config' data handler", () => {
+    expect(ctx.data._handlers.has("plugin-config")).toBe(true);
+  });
+
+  it("returns enableModalBrowser: false when not set in config", async () => {
+    ctx.config.get.mockResolvedValue({ fileBrowserBaseUrl: "https://files.example.com/files" });
+    const handler = ctx.data._handlers.get("plugin-config")!;
+    const result = (await handler()) as { enableModalBrowser: boolean };
+    expect(result.enableModalBrowser).toBe(false);
+  });
+
+  it("returns enableModalBrowser: false when explicitly set to false", async () => {
+    ctx.config.get.mockResolvedValue({ fileBrowserBaseUrl: "https://files.example.com/files", enableModalBrowser: false });
+    const handler = ctx.data._handlers.get("plugin-config")!;
+    const result = (await handler()) as { enableModalBrowser: boolean };
+    expect(result.enableModalBrowser).toBe(false);
+  });
+
+  it("returns enableModalBrowser: true when enabled", async () => {
+    ctx.config.get.mockResolvedValue({ fileBrowserBaseUrl: "https://files.example.com/files", enableModalBrowser: true });
+    const handler = ctx.data._handlers.get("plugin-config")!;
+    const result = (await handler()) as { enableModalBrowser: boolean };
+    expect(result.enableModalBrowser).toBe(true);
+  });
+
+  it("returns enableModalBrowser: false when config is empty", async () => {
+    ctx.config.get.mockResolvedValue({});
+    const handler = ctx.data._handlers.get("plugin-config")!;
+    const result = (await handler()) as { enableModalBrowser: boolean };
+    expect(result.enableModalBrowser).toBe(false);
+  });
+});

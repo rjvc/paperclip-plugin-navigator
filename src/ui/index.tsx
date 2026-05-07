@@ -1,9 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import type { PluginPageProps, PluginSidebarProps, PluginProjectSidebarItemProps } from "@paperclipai/plugin-sdk/ui";
 import { usePluginData } from "@paperclipai/plugin-sdk/ui";
 
-// Prevents javascript:, data:, vbscript: etc. from being used as href values.
-// Only allows http:// and https:// URLs.
 function safeHref(url: string | null): string | null {
   if (!url) return null;
   try {
@@ -19,6 +17,10 @@ interface ProjectEntry {
   name: string;
   path: string | null;
   fileBrowserUrl: string | null;
+}
+
+interface PluginConfig {
+  enableModalBrowser: boolean;
 }
 
 const COLORS = {
@@ -124,9 +126,6 @@ const styles = {
     borderBottom: `1px solid ${COLORS.border}`,
     alignItems: "center",
     transition: "background-color 0.15s",
-    ":last-child": {
-      borderBottom: "none",
-    },
   },
   projectMain: {
     display: "flex",
@@ -181,13 +180,145 @@ const styles = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// FileBrowserModal — beta overlay
+// ---------------------------------------------------------------------------
+
+interface FileBrowserModalProps {
+  project: { name: string; fileBrowserUrl: string };
+  onClose: () => void;
+}
+
+function FileBrowserModal({ project, onClose }: FileBrowserModalProps) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`File browser — ${project.name}`}
+      style={{ position: "fixed", inset: 0, zIndex: 99999, display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
+        aria-hidden="true"
+      />
+
+      {/* Panel */}
+      <div style={{
+        position: "relative",
+        width: "min(1100px, 95vw)",
+        height: "min(800px, 90vh)",
+        backgroundColor: "#fff",
+        borderRadius: "12px",
+        boxShadow: "0 25px 60px rgba(0,0,0,0.35)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}>
+        {/* Header */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 20px",
+          borderBottom: `1px solid ${COLORS.border}`,
+          backgroundColor: COLORS.bg,
+          flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+            <span style={{ fontSize: "14px", fontWeight: 600, color: COLORS.textPrimary }}>{project.name}</span>
+            <span style={{ fontSize: "11px", fontWeight: 500, padding: "2px 6px", borderRadius: "4px", backgroundColor: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" }}>
+              Beta
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <a
+              href={project.fileBrowserUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open in new tab"
+              style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: COLORS.primary, textDecoration: "none", padding: "4px 8px", borderRadius: "4px", border: `1px solid ${COLORS.border}` }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              Open in tab
+            </a>
+            <button
+              onClick={onClose}
+              aria-label="Close modal"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "6px", border: `1px solid ${COLORS.border}`, background: "#fff", cursor: "pointer", color: COLORS.textSecondary }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* iframe */}
+        <iframe
+          src={project.fileBrowserUrl}
+          title={`File browser — ${project.name}`}
+          style={{ flex: 1, border: "none", width: "100%" }}
+          sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared hook
+// ---------------------------------------------------------------------------
+
+function usePluginConfig(): boolean {
+  const { data } = usePluginData<PluginConfig>("plugin-config");
+  return data?.enableModalBrowser === true;
+}
+
+// ---------------------------------------------------------------------------
+// NavigatorSidebarEntry
+// ---------------------------------------------------------------------------
+
 export function NavigatorSidebarEntry({ context }: PluginSidebarProps) {
   const [open, setOpen] = useState(false);
+  const [modalProject, setModalProject] = useState<{ name: string; fileBrowserUrl: string } | null>(null);
+  const enableModalBrowser = usePluginConfig();
+
   const { data, loading, error } = usePluginData<ProjectEntry[]>("projects", {
     companyId: context.companyId ?? undefined,
   });
 
   const projects = data ?? [];
+
+  const handleProjectClick = useCallback((project: ProjectEntry) => {
+    const href = safeHref(project.fileBrowserUrl);
+    if (!href) return;
+    if (enableModalBrowser) {
+      setModalProject({ name: project.name, fileBrowserUrl: href });
+    } else {
+      window.open(href, "_blank", "noopener,noreferrer");
+    }
+  }, [enableModalBrowser]);
 
   return (
     <div style={{ width: "100%" }}>
@@ -221,19 +352,13 @@ export function NavigatorSidebarEntry({ context }: PluginSidebarProps) {
       {open && (
         <div style={{ paddingLeft: "8px", marginTop: "4px" }}>
           {loading && (
-            <p style={{ fontSize: "12px", color: "#9ca3af", padding: "4px 8px", margin: 0 }}>
-              A carregar...
-            </p>
+            <p style={{ fontSize: "12px", color: "#9ca3af", padding: "4px 8px", margin: 0 }}>A carregar...</p>
           )}
           {!loading && error && (
-            <p style={{ fontSize: "12px", color: "#ef4444", padding: "4px 8px", margin: 0 }}>
-              Erro ao carregar.
-            </p>
+            <p style={{ fontSize: "12px", color: "#ef4444", padding: "4px 8px", margin: 0 }}>Erro ao carregar.</p>
           )}
           {!loading && !error && projects.length === 0 && (
-            <p style={{ fontSize: "12px", color: "#9ca3af", padding: "4px 8px", margin: 0 }}>
-              Sem projectos.
-            </p>
+            <p style={{ fontSize: "12px", color: "#9ca3af", padding: "4px 8px", margin: 0 }}>Sem projectos.</p>
           )}
           {!loading && !error && projects.map((project) => (
             <div key={project.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 8px", borderRadius: "4px", gap: "8px" }}>
@@ -241,15 +366,13 @@ export function NavigatorSidebarEntry({ context }: PluginSidebarProps) {
                 {project.name}
               </span>
               {safeHref(project.fileBrowserUrl) ? (
-                <a
-                  href={safeHref(project.fileBrowserUrl) ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: "11px", color: "#2563eb", textDecoration: "none", flexShrink: 0 }}
+                <button
+                  onClick={() => handleProjectClick(project)}
+                  style={{ fontSize: "11px", color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0 }}
                   aria-label={`Abrir ${project.name}`}
                 >
-                  Abrir →
-                </a>
+                  {enableModalBrowser ? "Abrir ⊞" : "Abrir →"}
+                </button>
               ) : (
                 <span style={{ fontSize: "11px", color: "#9ca3af", flexShrink: 0 }}>—</span>
               )}
@@ -257,11 +380,22 @@ export function NavigatorSidebarEntry({ context }: PluginSidebarProps) {
           ))}
         </div>
       )}
+
+      {modalProject && (
+        <FileBrowserModal project={modalProject} onClose={() => setModalProject(null)} />
+      )}
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// NavigatorProjectSidebarItem
+// ---------------------------------------------------------------------------
+
 export function NavigatorProjectSidebarItem({ context }: PluginProjectSidebarItemProps) {
+  const [modalProject, setModalProject] = useState<{ name: string; fileBrowserUrl: string } | null>(null);
+  const enableModalBrowser = usePluginConfig();
+
   const { data, loading } = usePluginData<ProjectEntry>("project-files", {
     projectId: context.entityId,
     companyId: context.companyId ?? undefined,
@@ -270,49 +404,70 @@ export function NavigatorProjectSidebarItem({ context }: PluginProjectSidebarIte
   const href = safeHref(data?.fileBrowserUrl ?? null);
   if (loading || !href) return null;
 
+  const projectName = data?.name ?? "";
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (!enableModalBrowser) return;
+    e.preventDefault();
+    setModalProject({ name: projectName, fileBrowserUrl: href });
+  };
+
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        fontSize: "12px",
-        color: "#2563eb",
-        textDecoration: "none",
-        padding: "2px 4px",
-        borderRadius: "4px",
-      }}
-      aria-label={`Abrir ficheiros de ${data?.name ?? ""}`}
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-      </svg>
-      Files
-    </a>
+    <>
+      <a
+        href={href}
+        target={enableModalBrowser ? undefined : "_blank"}
+        rel="noopener noreferrer"
+        onClick={handleClick}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          fontSize: "12px",
+          color: "#2563eb",
+          textDecoration: "none",
+          padding: "2px 4px",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+        aria-label={`Abrir ficheiros de ${projectName}`}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+        Files
+      </a>
+      {modalProject && (
+        <FileBrowserModal project={modalProject} onClose={() => setModalProject(null)} />
+      )}
+    </>
   );
 }
 
+// ---------------------------------------------------------------------------
+// NavigatorPage
+// ---------------------------------------------------------------------------
+
 export function NavigatorPage({ context }: PluginPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [modalProject, setModalProject] = useState<{ name: string; fileBrowserUrl: string } | null>(null);
+  const enableModalBrowser = usePluginConfig();
+
   const { data, loading, error, refresh } = usePluginData<ProjectEntry[]>("projects", {
     companyId: context.companyId ?? undefined,
   });
 
   const projects = data ?? [];
-  
+
   const filteredProjects = useMemo(() => {
     if (!searchTerm) return projects;
     const lower = searchTerm.toLowerCase();
-    return projects.filter(p => 
-      p.name.toLowerCase().includes(lower) || 
+    return projects.filter(p =>
+      p.name.toLowerCase().includes(lower) ||
       (p.path && p.path.toLowerCase().includes(lower))
     );
   }, [projects, searchTerm]);
 
-  // Infer if config is missing (if we have projects but NO fileBrowserUrls)
   const isConfigMissing = useMemo(() => {
     return projects.length > 0 && projects.every(p => p.fileBrowserUrl === null && p.path !== null);
   }, [projects]);
@@ -352,8 +507,8 @@ export function NavigatorPage({ context }: PluginPageProps) {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button 
-          onClick={() => refresh()} 
+        <button
+          onClick={() => refresh()}
           style={{...styles.button, ...styles.disabledButton, cursor: 'pointer'}}
           title="Refresh list"
         >
@@ -371,9 +526,7 @@ export function NavigatorPage({ context }: PluginPageProps) {
         </div>
 
         {loading && (
-          <div style={styles.emptyState}>
-            <p>Loading projects...</p>
-          </div>
+          <div style={styles.emptyState}><p>Loading projects...</p></div>
         )}
 
         {!loading && error && (
@@ -388,36 +541,49 @@ export function NavigatorPage({ context }: PluginPageProps) {
           </div>
         )}
 
-        {!loading && !error && filteredProjects.map((project) => (
-          <div key={project.id} style={styles.row}>
-            <div style={styles.projectMain}>
-              <span style={styles.projectName}>{project.name}</span>
-              {project.path && (
-                <span style={styles.projectPath} title={project.path}>
-                  {project.path}
-                </span>
-              )}
+        {!loading && !error && filteredProjects.map((project) => {
+          const href = safeHref(project.fileBrowserUrl);
+          return (
+            <div key={project.id} style={styles.row}>
+              <div style={styles.projectMain}>
+                <span style={styles.projectName}>{project.name}</span>
+                {project.path && (
+                  <span style={styles.projectPath} title={project.path}>{project.path}</span>
+                )}
+              </div>
+              <div style={styles.actionCell}>
+                {href ? (
+                  enableModalBrowser ? (
+                    <button
+                      onClick={() => setModalProject({ name: project.name, fileBrowserUrl: href })}
+                      style={{...styles.button, ...styles.primaryButton}}
+                    >
+                      Open Files
+                    </button>
+                  ) : (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{...styles.button, ...styles.primaryButton}}
+                    >
+                      Open Files
+                    </a>
+                  )
+                ) : (
+                  <span style={{...styles.button, ...styles.disabledButton}} title="No workspace available">
+                    Unavailable
+                  </span>
+                )}
+              </div>
             </div>
-            <div style={styles.actionCell}>
-              {safeHref(project.fileBrowserUrl) ? (
-                <a
-                  href={safeHref(project.fileBrowserUrl) ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{...styles.button, ...styles.primaryButton}}
-                >
-                  Open Files
-                </a>
-              ) : (
-                <span style={{...styles.button, ...styles.disabledButton}} title="No workspace available">
-                  Unavailable
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {modalProject && (
+        <FileBrowserModal project={modalProject} onClose={() => setModalProject(null)} />
+      )}
     </div>
   );
 }
-

@@ -159,6 +159,16 @@ const plugin = definePlugin({
     });
 
     /**
+     * "plugin-config" data handler — exposes resolved config flags to the UI.
+     */
+    ctx.data.register("plugin-config", async () => {
+      const config = await ctx.config.get();
+      return {
+        enableModalBrowser: config?.enableModalBrowser === true,
+      };
+    });
+
+    /**
      * "project-files" data handler — called by NavigatorProjectSidebarItem.
      *
      * Accepts { projectId, companyId } and returns a single ProjectEntry
