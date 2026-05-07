@@ -26,8 +26,8 @@ paperclip-plugin-navigator
 
 After installation, set the required field under **Settings → Plugins → File Navigator → Configuration**:
 
-| Field                | Required | Description                                                                    |
-| -------------------- | -------- | ------------------------------------------------------------------------------ |
+| Field                | Required | Description                                                                   |
+| -------------------- | -------- | ----------------------------------------------------------------------------- |
 | `fileBrowserBaseUrl` | Yes      | Base URL of your external filebrowser, e.g. `https://files.example.com/files` |
 
 ### URL construction
@@ -82,27 +82,14 @@ Releases are published automatically via GitHub Actions with **npm provenance at
 **To release a new version:**
 
 ```bash
-# 1. bump version in package.json and manifest.ts
-pnpm version patch --no-git-tag-version
-# update src/manifest.ts PLUGIN_VERSION to match
-
-# 2. commit, tag and push
-git add package.json src/manifest.ts
-git commit -m "chore: release vX.Y.Z"
-git tag vX.Y.Z
-git push origin main --tags
+pnpm release          # patch (0.1.x → 0.1.x+1)
+pnpm release:minor    # minor (0.1.x → 0.2.0)
+pnpm release:major    # major (0.x.x → 1.0.0)
 ```
 
-The `publish.yml` workflow triggers on the tag push, runs tests, builds, and publishes with `--provenance` using the `NPM_TOKEN` secret configured in the repository settings.
+The `scripts/release.mjs` script bumps the version in `package.json` and `src/manifest.ts`, commits, tags, and pushes. The `publish.yml` workflow then runs tests, builds, and publishes with `--provenance`.
 
-> **Required secret:** `NPM_TOKEN` — create an Automation token on [npmjs.com](https://www.npmjs.com) and add it to the GitHub repo under **Settings → Secrets → Actions**.
-
-**Manual publish (development only, no provenance):**
-
-```bash
-pnpm version patch --no-git-tag-version
-npm publish --access public
-```
+> **Required secret:** `NPM_TOKEN` — create a Granular Access Token on [npmjs.com](https://www.npmjs.com) with "Bypass 2FA" enabled and add it to the GitHub repo under **Settings → Secrets → Actions**.
 
 ## License
 
