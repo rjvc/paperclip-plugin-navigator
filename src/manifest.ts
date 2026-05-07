@@ -2,7 +2,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 
 const PLUGIN_ID = "paperclip-plugin-navigator";
 
-const PLUGIN_VERSION = "0.1.13";
+const PLUGIN_VERSION = "0.1.14";
 
 const NAV_PAGE_SLOT_ID = "navigator-page";
 const NAV_SIDEBAR_SLOT_ID = "navigator-sidebar";
