@@ -2,7 +2,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 
 const PLUGIN_ID = "paperclip-plugin-navigator";
 
-const PLUGIN_VERSION = "0.2.0";
+const PLUGIN_VERSION = "0.2.1";
 
 const NAV_PAGE_SLOT_ID = "navigator-page";
 const NAV_SIDEBAR_SLOT_ID = "navigator-sidebar";
@@ -26,6 +26,7 @@ const manifest: PaperclipPluginManifestV1 = {
     "companies.read",
     "ui.page.register",
     "ui.sidebar.register",
+    "http.outbound",
   ],
   instanceConfigSchema: {
     type: "object",
@@ -35,6 +36,19 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "File Browser Base URL",
         description:
           "Base URL of your external filebrowser (e.g. https://files.example.com/files)",
+      },
+      fileBrowserUser: {
+        type: "string",
+        title: "File Browser Username",
+        description:
+          "Username for filebrowser API authentication. Required for the native file browser.",
+      },
+      fileBrowserPassword: {
+        type: "string",
+        title: "File Browser Password",
+        format: "password",
+        description:
+          "Password for filebrowser API authentication. Required for the native file browser.",
       },
       enableModalBrowser: {
         type: "boolean",
